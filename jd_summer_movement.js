@@ -9,14 +9,14 @@
 =================================Quantumultx=========================
 [task_local]
 #燃动夏季
-11 0,6-23/3 * * * https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js, tag=燃动夏季, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png, enabled=true
+11 8-23/3 * * * https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js, tag=燃动夏季, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png, enabled=true
 =================================Loon===================================
 [Script]
-cron "11 0,6-23/3 * * *" script-path=https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js,tag=燃动夏季
+cron "11 8-23/3 * * *" script-path=https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js,tag=燃动夏季
 ===================================Surge================================
-燃动夏季 = type=cron,cronexp="11 0,6-23/3 * * *",wake-system=1,timeout=3600,script-path=https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js
+燃动夏季 = type=cron,cronexp="11 8-23/3 * * *",wake-system=1,timeout=3600,script-path=https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js
 ====================================小火箭=============================
-燃动夏季 = type=cron,script-path=https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js, cronexpr="11 0,6-23/3 * * *", timeout=3600, enable=true
+燃动夏季 = type=cron,script-path=https://raw.githubusercontent.com/jiulan/platypus/main/scripts/jd_summer_movement.js, cronexpr="11 8-23/3 * * *", timeout=3600, enable=true
  */
 const $ = new Env('燃动夏季');
 const notify = $.isNode() ? require('./sendNotify') : '';
@@ -33,8 +33,11 @@ const REG_ENTRY = /(__webpack_require__\(__webpack_require__.s=)(\d+)(?=\)})/;
 const needModuleId = 356
 const DATA = {appid:'50085',sceneid:'OY217hPageh5'};
 let smashUtils;
+//是否兑换红包
+let withdraw = false;
+const UA =  `jdpingou;iPhone;10.0.6;${Math.ceil(Math.random()*2+12)}.${Math.ceil(Math.random()*4)};${randomString(40)};`;
 class MovementFaker {
-  constructor(cookie) {this.cookie = cookie;this.ua = require('./USER_AGENTS.js').USER_AGENT;}
+  constructor(cookie) {this.cookie = cookie;this.ua = UA;}
   async run() {if (!smashUtils) {await this.init();}
     var t = Math.floor(1e7 + 9e7 * Math.random()).toString();
     var e = smashUtils.get_risk_result({id: t,data: {random: t}}).log;
@@ -76,7 +79,7 @@ class MovementFaker {
     });
   }
 }
-
+$.appid = 'o2_act';
 $.inviteList = [];
 $.byInviteList = [];
 let uuid = 8888;
@@ -86,6 +89,10 @@ if ($.isNode()) {
     cookiesArr.push(jdCookieNode[item])
   })
   if (process.env.JD_DEBUG && process.env.JD_DEBUG === 'false') console.log = () => {};
+
+  if (process.env.JD_WITHDRAW && process.env.JD_WITHDRAW === 'true'){
+    withdraw = true;
+  }
 } else {
   cookiesArr = [
     $.getdata("CookieJD"),
@@ -156,15 +163,17 @@ if ($.isNode()) {
     $.canHelp = true;
     $.UserName = decodeURIComponent($.cookie.match(/pt_pin=([^; ]+)(?=;?)/) && $.cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1]);
     $.index = i + 1;
-    for (let j = 0; j < $.inviteList.length && $.canHelp; j++) {
-      $.oneInviteInfo = $.inviteList[j];
-      if ($.oneInviteInfo.ues === $.UserName || $.oneInviteInfo.max) {
-        continue;
+    for (let j = 0; j < $.inviteList.length ; j++) {
+      if($.canHelp) {
+        $.oneInviteInfo = $.inviteList[j];
+        if ($.oneInviteInfo.ues === $.UserName || $.oneInviteInfo.max) {
+          continue;
+        }
+        $.inviteId = $.oneInviteInfo.inviteId;
+        console.log(`${$.UserName}去助力${$.oneInviteInfo.ues},助力码${$.inviteId}`);
+        await takePostRequest('help');
+        await $.wait(2000);
       }
-      $.inviteId = $.oneInviteInfo.inviteId;
-      console.log(`${$.UserName}去助力${$.oneInviteInfo.ues},助力码${$.inviteId}`);
-      await takePostRequest('help');
-      await $.wait(2000);
     }
   }
   try{
@@ -173,7 +182,13 @@ if ($.isNode()) {
 
   }
 })().catch((e) => {$.log('', `❌ ${$.name}, 失败! 原因: ${e}!`, '')}).finally(() => {$.done();})
-
+function randomString(e) {
+  e = e || 32;
+  let t = "abcdefhijkmnprstwxyz2345678", a = t.length, n = "";
+  for (i = 0; i < e; i++)
+    n += t.charAt(Math.floor(Math.random() * a));
+  return n
+}
 
 async function main(){
   $.homeData = {};
@@ -186,6 +201,12 @@ async function main(){
     await takePostRequest('olympicgames_tiroGuide');
     await $.wait(1000);
   }
+  console.log('===============')
+  console.log('获取百元守卫战信息')
+  $.guradHome = {};
+  await takePostRequest('olypicgames_guradHome');
+  console.log('===============')
+  await $.wait(2000);
   if (Number($.userInfo.poolCurrency) >= Number($.userInfo.exchangeThreshold)) {
     console.log(`满足升级条件，去升级`);
     await $.wait(1000);
@@ -225,10 +246,17 @@ async function main(){
   console.log(`开始做微信端任务`)
   await takePostRequest('wxTaskDetail');
   await $.wait(1000)
+  console.log(`开始做店铺任务`)
+  await shop();
+  await $.wait(1000)
   await doTask();
-  console.log('获取百元守卫战信息')
-  $.guradHome = {};
-  await takePostRequest('olypicgames_guradHome');
+  console.log('是否自动兑换红包 使用变量JD_WITHDRAW 控制')
+  if (withdraw) {
+    console.log('开始兑换红包')
+    for (let i = 0; i < 4; i++) {
+      await takePostRequest('olympicgames_withdraw');
+    }
+  }
 }
 
 async function getBody($) {const zf = new MovementFaker($.cookie);const ss = await zf.run();return ss;}
@@ -292,7 +320,6 @@ async function doTask(){
           await $.wait(2000);
           console.log(`任务完成`);
         } else {
-          console.log($.callbackInfo);
           console.log(`任务失败`);
           await $.wait(3000);
         }
@@ -305,20 +332,81 @@ async function doTask(){
   }
 }
 
+async function shop(){
+  // 店铺
+  console.log(`\n去做店铺任务\n`);
+  $.shopInfoList = [];
+  await takePostRequest('qryCompositeMaterials');
+  for (let i = 0; i < $.shopInfoList.length; i++) {
+    let taskbool = false
+    $.shopSign = $.shopInfoList[i].extension.shopId;
+    console.log(`执行第${i+1}个店铺任务：${$.shopInfoList[i].name} ID:${$.shopSign}`);
+    $.shopResult = {};
+    await takePostRequest('olympicgames_shopLotteryInfo');
+    await $.wait(1000);
+    if(JSON.stringify($.shopResult) === `{}`) continue;
+    $.shopTask = $.shopResult.taskVos || [];
+    for (let i = 0; i < $.shopTask.length; i++) {
+      $.oneTask = $.shopTask[i];
+      if($.oneTask.taskType === 21 || $.oneTask.taskType === 14 || $.oneTask.status !== 1){continue;}  //不做入会//不做邀请
+      taskbool = true
+      $.activityInfoList = $.oneTask.brandMemberVos || $.oneTask.followShopVo || $.oneTask.shoppingActivityVos || $.oneTask.browseShopVo || $.oneTask.simpleRecordInfoVo;
+      if($.oneTask.taskType === 12){//签到
+        $.oneActivityInfo =  $.activityInfoList;
+        console.log(`店铺签到`);
+        await takePostRequest('olympicgames_bdDoTask');
+        continue;
+      }
+      for (let j = 0; j < $.activityInfoList.length; j++) {
+        $.oneActivityInfo = $.activityInfoList[j];
+        if ($.oneActivityInfo.status !== 1 || !$.oneActivityInfo.taskToken) {
+          continue;
+        }
+        $.callbackInfo = {};
+        console.log(`做任务：${$.oneActivityInfo.subtitle || $.oneActivityInfo.title || $.oneActivityInfo.taskName || $.oneActivityInfo.shopName};等待完成`);
+        await takePostRequest('olympicgames_doTaskDetail');
+        if ($.callbackInfo.code === 0 && $.callbackInfo.data && $.callbackInfo.data.result && $.callbackInfo.data.result.taskToken) {
+          await $.wait(8000);
+          let sendInfo = encodeURIComponent(`{"dataSource":"newshortAward","method":"getTaskAward","reqParams":"{\\"taskToken\\":\\"${$.callbackInfo.data.result.taskToken}\\"}","sdkVersion":"1.0.0","clientLanguage":"zh"}`)
+          await callbackResult(sendInfo)
+        } else  {
+          await $.wait(2000);
+          console.log(`任务完成`);
+        }
+      }
+    }
+    if(taskbool) await $.wait(1000);
+    let boxLotteryNum = $.shopResult.boxLotteryNum;
+    for (let j = 0; j <= boxLotteryNum; j++) {
+      console.log(`开始第${j+1}次拆盒`)
+      //抽奖
+      await takePostRequest('olympicgames_boxShopLottery');
+      await $.wait(3000);
+    }
+    // let wishLotteryNum = $.shopResult.wishLotteryNum;
+    // for (let j = 0; j < wishLotteryNum; j++) {
+    //   console.log(`开始第${j+1}次能量抽奖`)
+    //   //抽奖
+    //   await takePostRequest('zoo_wishShopLottery');
+    //   await $.wait(3000);
+    // }
+    if(taskbool) await $.wait(3000);
+  }
+}
 async function takePostRequest(type) {
   let body = ``;
   let myRequest = ``;
   switch (type) {
     case 'olympicgames_home':
-      body = `functionId=olympicgames_home&body={}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=o2_act`;
+      body = `functionId=olympicgames_home&body={}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest(body);
       break;
     case 'olympicgames_receiveCash':
-      body = `functionId=olympicgames_receiveCash&body={"type":6}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=o2_act`;
+      body = `functionId=olympicgames_receiveCash&body={"type":6}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest(body);
       break
     case 'olympicgames_getTaskDetail':
-      body = `functionId=olympicgames_getTaskDetail&body={"taskId":"","appSign":"1"}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=o2_act`;
+      body = `functionId=olympicgames_getTaskDetail&body={"taskId":"","appSign":"1"}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest(body);
       break
     case 'olympicgames_doTaskDetail':
@@ -326,11 +414,11 @@ async function takePostRequest(type) {
       myRequest = await getPostRequest(body);
       break;
     case 'olympicgames_getFeedDetail':
-      body = `functionId=olympicgames_getFeedDetail&body={"taskId":"${$.taskId}"}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=o2_act`;
+      body = `functionId=olympicgames_getFeedDetail&body={"taskId":"${$.taskId}"}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest(body);
       break;
     case 'wxTaskDetail':
-      body = `functionId=olympicgames_getTaskDetail&body={"taskId":"","appSign":"2"}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=o2_act`;
+      body = `functionId=olympicgames_getTaskDetail&body={"taskId":"","appSign":"2"}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest(body);
       break
     case 'olympicgames_collectCurrency':
@@ -351,11 +439,35 @@ async function takePostRequest(type) {
       myRequest = await getPostRequest( body);
       break;
     case 'olypicgames_guradHome':
-      body = `functionId=olypicgames_guradHome&body={}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=o2_act`;
+      body = `functionId=olypicgames_guradHome&body={}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest( body);
       break
     case 'olympicgames_tiroGuide':
       body = `functionId=olympicgames_tiroGuide&body={"sex":1,"sportsGoal":2}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
+      myRequest = await getPostRequest(body);
+      break;
+    case 'qryCompositeMaterials':
+      body = `functionId=qryCompositeMaterials&body={"qryParam":"[{\\"type\\":\\"advertGroup\\",\\"id\\":\\"05371960\\",\\"mapTo\\":\\"logoData\\"}]","openid":-1,"applyKey":"big_promotion"}&client=wh5&clientVersion=1.0.0`;
+      myRequest = await getPostRequest( body);
+      break;
+    case 'olympicgames_shopLotteryInfo':
+      body = `functionId=olympicgames_shopLotteryInfo&body={"channelSign":"1","shopSign":${$.shopSign}}&client=wh5&clientVersion=1.0.0&appid=${$.appid}`;
+      myRequest = await getPostRequest( body);
+      break;
+    case 'olympicgames_bdDoTask':
+      body = await getPostBody(type);
+      myRequest = await getPostRequest( body);
+      break;
+    case 'olympicgames_boxShopLottery':
+      body = `functionId=olympicgames_boxShopLottery&body={"shopSign":${$.shopSign}}&client=wh5&clientVersion=1.0.0&appid=${$.appid}`;
+      myRequest = await getPostRequest(body);
+      break;
+    case 'olympicgames_pawnshopRewardPop':
+      body = `functionId=olympicgames_pawnshopRewardPop&body={"skuId":${$.Reward.skuId}}&client=wh5&clientVersion=1.0.0&appid=${$.appid}`;
+      myRequest = await getPostRequest(body);
+      break;
+    case 'olympicgames_withdraw':
+      body = `functionId=olympicgames_withdraw&body={}&client=wh5&clientVersion=1.0.0&uuid=${uuid}&appid=${$.appid}`;
       myRequest = await getPostRequest(body);
       break;
     default:
@@ -409,7 +521,7 @@ async function dealReturn(type, data) {
       }else{
         //console.log(JSON.stringify(data));
       }
-      console.log(JSON.stringify(data));
+      console.log("olympicgames_receiveCash",JSON.stringify(data));
       break;
     case 'olympicgames_getTaskDetail':
       if (data.code === 0 && data.data.result) {
@@ -438,6 +550,12 @@ async function dealReturn(type, data) {
         $.feedDetailInfo = data.data.result.addProductVos[0] || [];
       }
       break;
+    case 'qryCompositeMaterials':
+      if (data.code === '0') {
+        $.shopInfoList = data.data.logoData.list;
+        console.log(`获取到${$.shopInfoList.length}个店铺`);
+      }
+      break
     case 'olympicgames_doTaskDetail':
       $.callbackInfo = data;
       break;
@@ -459,13 +577,12 @@ async function dealReturn(type, data) {
       }
       break
     case 'help':
-    case 'byHelp':
       if(data.data && data.data.bizCode === 0){
         if(data.data.result.hongBaoVO && data.data.result.hongBaoVO.withdrawCash){
           console.log(`助力成功`);
         }
       }else if(data.data && data.data.bizMsg){
-        if(data.data.bizCode === -405 || data.data.bizCode === -411){
+        if(data.data.bizCode === -405 || data.data.bizCode === -411 || data.data.bizCode === -401){
           $.canHelp = false;
         }
         if(data.data.bizCode === -404 && $.oneInviteInfo){
@@ -473,6 +590,25 @@ async function dealReturn(type, data) {
         }
         console.log(data.data.bizMsg);
       }else{
+        $.canHelp = false;
+        console.log(JSON.stringify(data));
+      }
+      break;
+    case 'byHelp':
+      if(data.data && data.data.bizCode === 0){
+        if(data.data.result.hongBaoVO && data.data.result.hongBaoVO.withdrawCash){
+          console.log(`助力成功`);
+        }
+      }else if(data.data && data.data.bizMsg){
+        if(data.data.bizCode === -405 || data.data.bizCode === -411 || data.data.bizCode === -401){
+          $.canHelp = false;
+        }
+        if(data.data.bizCode === -404 && $.oneInviteInfo){
+          $.oneInviteInfo.max = true;
+        }
+        console.log(data.data.bizMsg);
+      }else{
+        $.canHelp = false;
         console.log(JSON.stringify(data));
       }
       //console.log(`助力结果\n${JSON.stringify(data)}`)
@@ -510,6 +646,68 @@ async function dealReturn(type, data) {
     case 'olympicgames_tiroGuide':
       console.log(JSON.stringify(data));
       break
+    case 'olympicgames_shopLotteryInfo':
+      if (data.code === 0) {
+        $.shopResult = data.data.result;
+      }
+      break;
+    case 'olympicgames_bdDoTask':
+      if(data.data && data.data.bizCode === 0){
+        console.log(`签到获得：${data.data.result.score}`);
+      }else if(data.data && data.data.bizMsg){
+        console.log(data.data.bizMsg);
+      }else{
+        console.log(data);
+      }
+      break;
+    case 'wxTaskDetail':
+      if (data.code === 0) {
+        $.wxTaskList = data.data.result && data.data.result.taskVos || [];
+      }
+      break;
+    case 'olympicgames_boxShopLottery':
+      if(data.data && data.data.result){
+        let result = data.data.result;
+        switch (result.awardType) {
+          case 8:
+            console.log(`获得金币：${result.rewardScore}`);
+            break;
+          case 5:
+            console.log(`获得：adidas能量`);
+            break;
+          case 2:
+          case 3:
+            console.log(`获得优惠券：${result.couponInfo.usageThreshold} 优惠：${result.couponInfo.quota}，${result.couponInfo.useRange}`);
+            break;
+          default:
+            console.log(`抽奖获得未知`);
+            console.log(JSON.stringify(data));
+        }
+      } else if (data.data && data.data.bizMsg) {
+        console.log(data.data.bizMsg);
+      } else {
+        console.log(res);
+      }
+      break
+    case 'olympicgames_pawnshopRewardPop':
+      if (data.data && data.data.bizCode === 0 && data.data.result) {
+        console.log(res)
+        console.log(`结果：${data.data.result.currencyReward && '额外奖励' + data.data.result.currencyReward + '卡币' || ''}`)
+      } else if (data.data && data.data.bizMsg) {
+        console.log(data.data.bizMsg);
+      } else {
+        console.log(res);
+      }
+      break;
+    case 'olympicgames_withdraw':
+      if (data.data && data.data.bizCode === 0) {
+        console.log("兑换红包成功")
+      } else if (data.data && data.data.bizMsg) {
+        console.log(data.data.bizMsg);
+      } else {
+        console.log(res);
+      }
+      break;
     default:
       console.log(`未判断的异常${type}`);
   }
@@ -525,7 +723,8 @@ function callbackResult(info) {
         'Connection': `keep-alive`,
         'Accept': `*/*`,
         'Host': `api.m.jd.com`,
-        'User-Agent': $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
+        'User-Agent': UA,
+        //$.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
         'Accept-Encoding': `gzip, deflate, br`,
         'Accept-Language': `zh-cn`,
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -557,7 +756,8 @@ async function getPostRequest(body) {
     'Cookie': $.cookie,
     "Origin": "https://wbbny.m.jd.com",
     "Referer": "https://wbbny.m.jd.com/",
-    'User-Agent': $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
+    'User-Agent': UA,
+    //'User-Agent': $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
   };
   return { method: method, headers: headers, body: body};
 }
@@ -618,7 +818,7 @@ function getAuthorShareCode(url) {
       "url": `${url}`,
       "timeout": 10000,
       "headers": {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/87.0.4280.88"
+        "User-Agent": UA
       }
     };
     if ($.isNode() && process.env.TG_PROXY_HOST && process.env.TG_PROXY_PORT) {
@@ -726,3 +926,4 @@ function nods(dir) {
 }
 // prettier-ignore
 function Env(t,e){"undefined"!=typeof process&&JSON.stringify(process.env).indexOf("GITHUB")>-1&&process.exit(0);class s{constructor(t){this.env=t}send(t,e="GET"){t="string"==typeof t?{url:t}:t;let s=this.get;return"POST"===e&&(s=this.post),new Promise((e,i)=>{s.call(this,t,(t,s,r)=>{t?i(t):e(s)})})}get(t){return this.send.call(this.env,t)}post(t){return this.send.call(this.env,t,"POST")}}return new class{constructor(t,e){this.name=t,this.http=new s(this),this.data=null,this.dataFile="box.dat",this.logs=[],this.isMute=!1,this.isNeedRewrite=!1,this.logSeparator="\n",this.startTime=(new Date).getTime(),Object.assign(this,e),this.log("",`🔔${this.name}, 开始!`)}isNode(){return"undefined"!=typeof module&&!!module.exports}isQuanX(){return"undefined"!=typeof $task}isSurge(){return"undefined"!=typeof $httpClient&&"undefined"==typeof $loon}isLoon(){return"undefined"!=typeof $loon}toObj(t,e=null){try{return JSON.parse(t)}catch{return e}}toStr(t,e=null){try{return JSON.stringify(t)}catch{return e}}getjson(t,e){let s=e;const i=this.getdata(t);if(i)try{s=JSON.parse(this.getdata(t))}catch{}return s}setjson(t,e){try{return this.setdata(JSON.stringify(t),e)}catch{return!1}}getScript(t){return new Promise(e=>{this.get({url:t},(t,s,i)=>e(i))})}runScript(t,e){return new Promise(s=>{let i=this.getdata("@chavy_boxjs_userCfgs.httpapi");i=i?i.replace(/\n/g,"").trim():i;let r=this.getdata("@chavy_boxjs_userCfgs.httpapi_timeout");r=r?1*r:20,r=e&&e.timeout?e.timeout:r;const[o,h]=i.split("@"),n={url:`http://${h}/v1/scripting/evaluate`,body:{script_text:t,mock_type:"cron",timeout:r},headers:{"X-Key":o,Accept:"*/*"}};this.post(n,(t,e,i)=>s(i))}).catch(t=>this.logErr(t))}loaddata(){if(!this.isNode())return{};{this.fs=this.fs?this.fs:require("fs"),this.path=this.path?this.path:require("path");const t=this.path.resolve(this.dataFile),e=this.path.resolve(process.cwd(),this.dataFile),s=this.fs.existsSync(t),i=!s&&this.fs.existsSync(e);if(!s&&!i)return{};{const i=s?t:e;try{return JSON.parse(this.fs.readFileSync(i))}catch(t){return{}}}}}writedata(){if(this.isNode()){this.fs=this.fs?this.fs:require("fs"),this.path=this.path?this.path:require("path");const t=this.path.resolve(this.dataFile),e=this.path.resolve(process.cwd(),this.dataFile),s=this.fs.existsSync(t),i=!s&&this.fs.existsSync(e),r=JSON.stringify(this.data);s?this.fs.writeFileSync(t,r):i?this.fs.writeFileSync(e,r):this.fs.writeFileSync(t,r)}}lodash_get(t,e,s){const i=e.replace(/\[(\d+)\]/g,".$1").split(".");let r=t;for(const t of i)if(r=Object(r)[t],void 0===r)return s;return r}lodash_set(t,e,s){return Object(t)!==t?t:(Array.isArray(e)||(e=e.toString().match(/[^.[\]]+/g)||[]),e.slice(0,-1).reduce((t,s,i)=>Object(t[s])===t[s]?t[s]:t[s]=Math.abs(e[i+1])>>0==+e[i+1]?[]:{},t)[e[e.length-1]]=s,t)}getdata(t){let e=this.getval(t);if(/^@/.test(t)){const[,s,i]=/^@(.*?)\.(.*?)$/.exec(t),r=s?this.getval(s):"";if(r)try{const t=JSON.parse(r);e=t?this.lodash_get(t,i,""):e}catch(t){e=""}}return e}setdata(t,e){let s=!1;if(/^@/.test(e)){const[,i,r]=/^@(.*?)\.(.*?)$/.exec(e),o=this.getval(i),h=i?"null"===o?null:o||"{}":"{}";try{const e=JSON.parse(h);this.lodash_set(e,r,t),s=this.setval(JSON.stringify(e),i)}catch(e){const o={};this.lodash_set(o,r,t),s=this.setval(JSON.stringify(o),i)}}else s=this.setval(t,e);return s}getval(t){return this.isSurge()||this.isLoon()?$persistentStore.read(t):this.isQuanX()?$prefs.valueForKey(t):this.isNode()?(this.data=this.loaddata(),this.data[t]):this.data&&this.data[t]||null}setval(t,e){return this.isSurge()||this.isLoon()?$persistentStore.write(t,e):this.isQuanX()?$prefs.setValueForKey(t,e):this.isNode()?(this.data=this.loaddata(),this.data[e]=t,this.writedata(),!0):this.data&&this.data[e]||null}initGotEnv(t){this.got=this.got?this.got:require("got"),this.cktough=this.cktough?this.cktough:require("tough-cookie"),this.ckjar=this.ckjar?this.ckjar:new this.cktough.CookieJar,t&&(t.headers=t.headers?t.headers:{},void 0===t.headers.Cookie&&void 0===t.cookieJar&&(t.cookieJar=this.ckjar))}get(t,e=(()=>{})){t.headers&&(delete t.headers["Content-Type"],delete t.headers["Content-Length"]),this.isSurge()||this.isLoon()?(this.isSurge()&&this.isNeedRewrite&&(t.headers=t.headers||{},Object.assign(t.headers,{"X-Surge-Skip-Scripting":!1})),$httpClient.get(t,(t,s,i)=>{!t&&s&&(s.body=i,s.statusCode=s.status),e(t,s,i)})):this.isQuanX()?(this.isNeedRewrite&&(t.opts=t.opts||{},Object.assign(t.opts,{hints:!1})),$task.fetch(t).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>e(t))):this.isNode()&&(this.initGotEnv(t),this.got(t).on("redirect",(t,e)=>{try{if(t.headers["set-cookie"]){const s=t.headers["set-cookie"].map(this.cktough.Cookie.parse).toString();s&&this.ckjar.setCookieSync(s,null),e.cookieJar=this.ckjar}}catch(t){this.logErr(t)}}).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>{const{message:s,response:i}=t;e(s,i,i&&i.body)}))}post(t,e=(()=>{})){if(t.body&&t.headers&&!t.headers["Content-Type"]&&(t.headers["Content-Type"]="application/x-www-form-urlencoded"),t.headers&&delete t.headers["Content-Length"],this.isSurge()||this.isLoon())this.isSurge()&&this.isNeedRewrite&&(t.headers=t.headers||{},Object.assign(t.headers,{"X-Surge-Skip-Scripting":!1})),$httpClient.post(t,(t,s,i)=>{!t&&s&&(s.body=i,s.statusCode=s.status),e(t,s,i)});else if(this.isQuanX())t.method="POST",this.isNeedRewrite&&(t.opts=t.opts||{},Object.assign(t.opts,{hints:!1})),$task.fetch(t).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>e(t));else if(this.isNode()){this.initGotEnv(t);const{url:s,...i}=t;this.got.post(s,i).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>{const{message:s,response:i}=t;e(s,i,i&&i.body)})}}time(t,e=null){const s=e?new Date(e):new Date;let i={"M+":s.getMonth()+1,"d+":s.getDate(),"H+":s.getHours(),"m+":s.getMinutes(),"s+":s.getSeconds(),"q+":Math.floor((s.getMonth()+3)/3),S:s.getMilliseconds()};/(y+)/.test(t)&&(t=t.replace(RegExp.$1,(s.getFullYear()+"").substr(4-RegExp.$1.length)));for(let e in i)new RegExp("("+e+")").test(t)&&(t=t.replace(RegExp.$1,1==RegExp.$1.length?i[e]:("00"+i[e]).substr((""+i[e]).length)));return t}msg(e=t,s="",i="",r){const o=t=>{if(!t)return t;if("string"==typeof t)return this.isLoon()?t:this.isQuanX()?{"open-url":t}:this.isSurge()?{url:t}:void 0;if("object"==typeof t){if(this.isLoon()){let e=t.openUrl||t.url||t["open-url"],s=t.mediaUrl||t["media-url"];return{openUrl:e,mediaUrl:s}}if(this.isQuanX()){let e=t["open-url"]||t.url||t.openUrl,s=t["media-url"]||t.mediaUrl;return{"open-url":e,"media-url":s}}if(this.isSurge()){let e=t.url||t.openUrl||t["open-url"];return{url:e}}}};if(this.isMute||(this.isSurge()||this.isLoon()?$notification.post(e,s,i,o(r)):this.isQuanX()&&$notify(e,s,i,o(r))),!this.isMuteLog){let t=["","==============📣系统通知📣=============="];t.push(e),s&&t.push(s),i&&t.push(i),console.log(t.join("\n")),this.logs=this.logs.concat(t)}}log(...t){t.length>0&&(this.logs=[...this.logs,...t]),console.log(t.join(this.logSeparator))}logErr(t,e){const s=!this.isSurge()&&!this.isQuanX()&&!this.isLoon();s?this.log("",`❗️${this.name}, 错误!`,t.stack):this.log("",`❗️${this.name}, 错误!`,t)}wait(t){return new Promise(e=>setTimeout(e,t))}done(t={}){const e=(new Date).getTime(),s=(e-this.startTime)/1e3;this.log("",`🔔${this.name}, 结束! 🕛 ${s} 秒`),this.log(),(this.isSurge()||this.isQuanX()||this.isLoon())&&$done(t)}}(t,e)}
+
